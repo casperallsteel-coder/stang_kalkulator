@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stang Skæreplan Beregner</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1, h2, h3 { color: #2c3e50; }
+        .grid { display: flex; gap: 20px; }
+        .sidebar { flex: 1; background: #f8f9fa; padding: 20px; border-radius: 8px; }
+        .main { flex: 2; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        input[type="number"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
+        button:hover { background: #2980b9; }
+        .btn-secondary { background: #95a5a6; width: auto; font-size: 14px; margin-top: 10px; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .delete-btn { background: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; }
+        .delete-btn:hover { background: #c0392b; }
+        
+        .result-container { margin-top: 30px; }
+        .metric-cards { display: flex; gap: 15px; margin-bottom: 20px; }
+        .metric-card { flex: 1; background: #e8f4f8; padding: 15px; border-radius: 8px; text-align: center; border-left: 5px solid #3498db; }
+        .metric-card h4 { margin: 0 0 10px 0; font-size: 14px; color: #555; }
+        .metric-card .value { font-size: 24px; font-weight: bold; color: #2c3e50; }
+        
+        .bar-container { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; overflow: hidden; }
+        .bar-header { background: #f2f2f2; padding: 10px 15px; font-weight: bold; display: flex; justify-content: space-between; cursor: pointer; }
+        .bar-content { padding: 15px; display: block; }
+        .visual-bar { display: flex; height: 40px; width: 100%; background: #eee; border-radius: 4px; overflow: hidden; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ccc; }
+        .visual-piece { background: #3498db; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border-right: 2px solid #2c3e50; box-sizing: border-box; }
+        .visual-kerf { background: #e74c3c; }
+        .visual-rest { background: #95a5a6; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; }
+        .visual-grip { background: #34495e; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        
+        @media print {
+            body { padding: 0; background: white; }
+            .sidebar, .btn-secondary, button, table, h3:not(#resultArea h3), p { display: none !important; }
+            .main { flex: none; width: 100%; }
+            #resultArea { display: block !important; margin-top: 0; }
+            #resultArea h3 { display: block !important; }
+            .metric-card, .visual-piece, .visual-kerf, .visual-rest, .visual-grip, .bar-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .bar-content { display: block !important; page-break-inside: avoid; }
+            .bar-container { page-break-inside: avoid; margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <img src="logo.png" alt="Logo" style="max-height: 60px; margin-bottom: 10px;">
+    <h1>Beregner til Stangmateriale (Skæreplan)</h1>
+    <p>Dette værktøj optimerer dit materialeforbrug ved at pakke dine ønskede emner mest effektivt ind i de rå stænger. Det kører direkte i din browser.</p>
+
+    <div class="grid">
+        <div class="sidebar">
+            <h3>Indstillinger</h3>
+            <div class="form-group">
+                <label>Standard stanglængde (mm)</label>
+                <input type="number" id="barLength" value="6000" min="100">
+            </div>
+            <div class="form-group">
+                <label>Savsnit / klinge tykkelse (mm)</label>
+                <input type="number" id="kerf" value="3" min="0">
+            </div>
+            <div class="form-group">
+                <label>Maskinens gribekant / restspild (mm)</label>
+                <input type="number" id="gripWaste" value="100" min="0">
+            </div>
+            <div style="margin-top: 20px; padding: 10px; background: #d4edda; color: #155724; border-radius: 4px;">
+                Brugbar længde pr. stang:<br>
+                <strong id="usableLengthDisplay" style="font-size: 18px;">5900 mm</strong>
+            </div>
+        </div>
+
+        <div class="main">
+            <h3>Emner der skal skæres</h3>
+            <table id="partsTable">
+                <thead>
+                    <tr>
+                        <th>Længde (mm)</th>
+                        <th>Antal</th>
+                        <th>Handling</th>
+                    </tr>
+                </thead>
+                <tbody id="partsBody">
+                    <!-- Default rows -->
+                </tbody>
+            </table>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn-secondary" onclick="addRow()" style="margin-top: 0;">+ Tilføj række</button>
+                <button class="btn-secondary" onclick="resetToStandard()" style="margin-top: 0;">Gendan standard</button>
+                <button class="btn-secondary" onclick="clearList()" style="margin-top: 0; background: #e74c3c; color: white;">Ryd helt</button>
+            </div>
+            
+            <div style="margin-top: 30px; display: flex; gap: 10px;">
+                <button onclick="calculatePlan()">Beregn Skæreplan</button>
+                <button onclick="window.print()" style="background: #e67e22;">Gem som PDF / Print</button>
+            </div>
+
+            <div id="resultArea" class="result-container" style="display: none;">
+                <h2 style="color: #27ae60;">Resultat: Du skal bruge <span id="totalBarsCount">0</span> stænger.</h2>
+                
+                <div class="metric-cards">
+                    <div class="metric-card">
+                        <h4>Brugt materiale (inkl. savsnit)</h4>
+                        <div class="value" id="usedMaterialMetric">0 m</div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Maskinspild i alt</h4>
+                        <div class="value" id="gripWasteMetric">0 m</div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Afskårne rester i alt</h4>
+                        <div class="value" id="restWasteMetric">0 m</div>
+                    </div>
+                </div>
+
+                <h3>Detaljeret Skæreplan</h3>
+                <div id="barsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update usable length display
+        function updateUsable() {
+            const barLength = parseInt(document.getElementById('barLength').value) || 0;
+            const gripWaste = parseInt(document.getElementById('gripWaste').value) || 0;
+            document.getElementById('usableLengthDisplay').innerText = Math.max(0, barLength - gripWaste) + " mm";
+        }
+
+        function saveSettings() {
+            localStorage.setItem('stang_barLength', document.getElementById('barLength').value);
+            localStorage.setItem('stang_kerf', document.getElementById('kerf').value);
+            localStorage.setItem('stang_gripWaste', document.getElementById('gripWaste').value);
+        }
+
+        function loadSettings() {
+            const savedBarLength = localStorage.getItem('stang_barLength');
+            const savedKerf = localStorage.getItem('stang_kerf');
+            const savedGripWaste = localStorage.getItem('stang_gripWaste');
+            
+            if (savedBarLength) document.getElementById('barLength').value = savedBarLength;
+            if (savedKerf) document.getElementById('kerf').value = savedKerf;
+            if (savedGripWaste) document.getElementById('gripWaste').value = savedGripWaste;
+            updateUsable();
+        }
+
+        document.getElementById('barLength').addEventListener('input', () => { updateUsable(); saveSettings(); });
+        document.getElementById('kerf').addEventListener('input', saveSettings);
+        document.getElementById('gripWaste').addEventListener('input', () => { updateUsable(); saveSettings(); });
+        
+        loadSettings();
+
+        // Manage table rows
+        function saveParts() {
+            const parts = [];
+            document.querySelectorAll('#partsBody tr').forEach(tr => {
+                const len = tr.querySelector('.part-length').value;
+                const count = tr.querySelector('.part-count').value;
+                if (len || count) {
+                    parts.push({ length: len, count: count });
+                }
+            });
+            localStorage.setItem('sk_parts', JSON.stringify(parts));
+        }
+
+        document.getElementById('partsBody').addEventListener('input', saveParts);
+        document.getElementById('partsBody').addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                setTimeout(saveParts, 10); // Vent på at elementet er slettet
+            }
+        });
+
+        function addRow(length = '', count = '') {
+            const tbody = document.getElementById('partsBody');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="number" class="part-length" value="${length}" min="1" placeholder="F.eks. 500"></td>
+                <td><input type="number" class="part-count" value="${count}" min="1" placeholder="F.eks. 10"></td>
+                <td><button class="delete-btn" onclick="this.parentElement.parentElement.remove()">Slet</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        // Initialize default rows
+        const savedPartsStr = localStorage.getItem('sk_parts');
+        if (savedPartsStr) {
+            try {
+                const savedParts = JSON.parse(savedPartsStr);
+                if (savedParts.length > 0) {
+                    savedParts.forEach(p => addRow(p.length, p.count));
+                } else {
+                    addRow(); // tom række
+                }
+            } catch (e) {
+                addRow(500, 10);
+                addRow(750, 30);
+                addRow(150, 5);
+            }
+        } else {
+            addRow(500, 10);
+            addRow(750, 30);
+            addRow(150, 5);
+        }
+
+        function clearList() {
+            if (confirm("Er du sikker på, at du vil slette hele listen?")) {
+                document.getElementById('partsBody').innerHTML = '';
+                document.getElementById('resultArea').style.display = 'none';
+                addRow();
+                saveParts();
+            }
+        }
+
+        function resetToStandard() {
+            if (confirm("Er du sikker på, at du vil slette listen og indlæse standardværdierne?")) {
+                document.getElementById('partsBody').innerHTML = '';
+                document.getElementById('resultArea').style.display = 'none';
+                addRow(500, 10);
+                addRow(750, 30);
+                addRow(150, 5);
+                saveParts();
+            }
+        }
+
+        function toggleBar(element) {
+            const content = element.nextElementSibling;
+            content.style.display = content.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function calculatePlan() {
+            const barLength = parseInt(document.getElementById('barLength').value);
+            const kerf = parseInt(document.getElementById('kerf').value) || 0;
+            const gripWaste = parseInt(document.getElementById('gripWaste').value) || 0;
+            const usableLength = barLength - gripWaste;
+
+            if (usableLength <= 0) {
+                alert("Fejl: Gribekant er større end eller lig med stanglængden!");
+                return;
+            }
+
+            // Gather pieces
+            const lengthInputs = document.querySelectorAll('.part-length');
+            const countInputs = document.querySelectorAll('.part-count');
+            
+            let pieces = [];
+            for (let i = 0; i < lengthInputs.length; i++) {
+                const len = parseInt(lengthInputs[i].value);
+                const cnt = parseInt(countInputs[i].value);
+                if (len && cnt && len > 0 && cnt > 0) {
+                    if (len > usableLength) {
+                        alert(`Fejl: Et emne på ${len} mm er længere end den brugbare stanglængde på ${usableLength} mm!`);
+                        return;
+                    }
+                    for (let j = 0; j < cnt; j++) {
+                        pieces.push(len);
+                    }
+                }
+            }
+
+            if (pieces.length === 0) {
+                alert("Indtast venligst nogle gyldige længder og antal.");
+                return;
+            }
+
+            // FFD Optimization
+            pieces.sort((a, b) => b - a); // Sort descending
+
+            let bars = [];
+
+            for (let piece of pieces) {
+                let placed = false;
+                for (let bar of bars) {
+                    const cost = bar.pieces.length === 0 ? piece : kerf + piece;
+                    if (bar.remaining >= cost) {
+                        bar.remaining -= cost;
+                        bar.pieces.push(piece);
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) {
+                    bars.push({
+                        remaining: usableLength - piece,
+                        pieces: [piece]
+                    });
+                }
+            }
+
+            renderResults(bars, barLength, kerf, gripWaste);
+        }
+
+        function renderResults(bars, barLength, kerf, gripWaste) {
+            document.getElementById('resultArea').style.display = 'block';
+            document.getElementById('totalBarsCount').innerText = bars.length;
+
+            let totalUsedParts = 0;
+            let totalKerf = 0;
+            let totalRest = 0;
+
+            const barsList = document.getElementById('barsList');
+            barsList.innerHTML = '';
+            
+            // Extract unique lengths for coloring
+            let allPieces = [];
+            bars.forEach(b => allPieces.push(...b.pieces));
+            let uniqueLengths = [...new Set(allPieces)].sort((a, b) => b - a);
+            const pieceColors = ['#3498db', '#f1c40f', '#2ecc71', '#e67e22', '#9b59b6', '#1abc9c', '#d35400', '#2980b9', '#27ae60', '#f39c12'];
+
+            let groupedBars = [];
+            bars.forEach(bar => {
+                let patternStr = bar.pieces.join(',');
+                let existingGroup = groupedBars.find(g => g.patternStr === patternStr && g.bar.remaining === bar.remaining);
+                if (existingGroup) {
+                    existingGroup.count++;
+                } else {
+                    groupedBars.push({ patternStr: patternStr, count: 1, bar: bar });
+                }
+            });
+
+            let currentBarStartIndex = 1;
+
+            groupedBars.forEach((group) => {
+                const bar = group.bar;
+                const count = group.count;
+                
+                const titleStr = count > 1 
+                    ? `Stang ${currentBarStartIndex}-${currentBarStartIndex + count - 1} (${count} stk.)` 
+                    : `Stang ${currentBarStartIndex}`;
+                
+                currentBarStartIndex += count;
+
+                const usedPercentage = (((barLength - gripWaste - bar.remaining) / barLength) * 100).toFixed(1);
+                
+                bar.pieces.forEach(p => totalUsedParts += p * count);
+                totalKerf += (bar.pieces.length > 0 ? (bar.pieces.length - 1) * kerf * count : 0);
+                totalRest += bar.remaining * count;
+
+                // Visual bar creation
+                let visualHtml = `<div class="visual-bar">`;
+                bar.pieces.forEach((p, i) => {
+                    const widthPct = (p / barLength) * 100;
+                    const cIdx = uniqueLengths.indexOf(p) % pieceColors.length;
+                    const pColor = pieceColors[cIdx];
+                    visualHtml += `<div class="visual-piece" style="width: ${widthPct}%; background: ${pColor};" title="${p} mm">${p}</div>`;
+                    if (i < bar.pieces.length - 1 && kerf > 0) {
+                        const kerfPct = (kerf / barLength) * 100;
+                        visualHtml += `<div class="visual-kerf" style="width: ${kerfPct}%; background: #222;" title="Savsnit ${kerf} mm"></div>`;
+                    }
+                });
+                
+                if (bar.remaining > 0) {
+                    const restPct = (bar.remaining / barLength) * 100;
+                    visualHtml += `<div class="visual-rest" style="width: ${restPct}%" title="Rest ${bar.remaining} mm">Rest ${bar.remaining}</div>`;
+                }
+
+                if (gripWaste > 0) {
+                    const gripPct = (gripWaste / barLength) * 100;
+                    visualHtml += `<div class="visual-grip" style="width: ${gripPct}%" title="Maskinspild ${gripWaste} mm">Spild</div>`;
+                }
+
+                visualHtml += `</div>`;
+
+                const pieceString = bar.pieces.map(p => {
+                    const cIdx = uniqueLengths.indexOf(p) % pieceColors.length;
+                    return `<strong style="color: ${pieceColors[cIdx]}">${p}</strong>`;
+                }).join(' ➔ ');
+
+                const barEl = document.createElement('div');
+                barEl.className = 'bar-container';
+                barEl.innerHTML = `
+                    <div class="bar-header" onclick="toggleBar(this)">
+                        <span>${titleStr}</span>
+                        <span>Udnyttelse: ${usedPercentage}%</span>
+                    </div>
+                    <div class="bar-content">
+                        ${visualHtml}
+                        <p><strong>Skær i rækkefølge:</strong> ${pieceString} mm</p>
+                        <p>Antal emner pr. stang: <strong>${bar.pieces.length} stk.</strong> | Ubrugt rest: <strong>${bar.remaining} mm</strong></p>
+                    </div>
+                `;
+                barsList.appendChild(barEl);
+            });
+
+            document.getElementById('usedMaterialMetric').innerText = ((totalUsedParts + totalKerf) / 1000).toFixed(2) + ' m';
+            document.getElementById('gripWasteMetric').innerText = ((bars.length * gripWaste) / 1000).toFixed(2) + ' m';
+            document.getElementById('restWasteMetric').innerText = (totalRest / 1000).toFixed(2) + ' m';
+        }
+    </script>
+
+</body>
+</html>
