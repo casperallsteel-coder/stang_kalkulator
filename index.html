@@ -102,7 +102,7 @@
             
             <div class="form-group" style="margin-top: 20px;">
                 <label>Bemærkning (F.eks. Materiale, Ordrenr, Lagerplacering)</label>
-                <input type="text" id="orderNotes" placeholder="Skrives automatisk med ud på printet..." style="font-size: 16px;">
+                <textarea id="orderNotes" rows="2" placeholder="Linje 1: Materiale...&#10;Linje 2: Lagerplacering..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; font-family: inherit; resize: vertical;"></textarea>
             </div>
 
             <div style="margin-top: 20px; display: flex; gap: 10px;">
@@ -111,7 +111,7 @@
             </div>
 
             <div id="resultArea" class="result-container" style="display: none;">
-                <div id="printNotesDisplay" style="margin-bottom: 20px; font-size: 18px; font-weight: bold; color: #34495e; border-bottom: 2px solid #eee; padding-bottom: 10px; display: none;"></div>
+                <div id="printNotesDisplay" style="margin-bottom: 20px; font-size: 18px; font-weight: bold; color: #34495e; border-bottom: 2px solid #eee; padding-bottom: 10px; display: none; white-space: pre-wrap;"></div>
                 <h2 style="color: #27ae60;">Resultat: Du skal bruge <span id="totalBarsCount">0</span> stænger.</h2>
                 
                 <div class="metric-cards">
