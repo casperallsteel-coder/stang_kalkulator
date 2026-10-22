@@ -52,8 +52,8 @@ def main():
     
     st.sidebar.header("Maskin- og Materialeindstillinger")
     bar_length = st.sidebar.number_input("Standard stanglængde (mm)", value=6000, step=100, min_value=100)
-    kerf = st.sidebar.number_input("Savsnit / klinge tykkelse (mm)", value=3, step=1, min_value=0)
-    grip_waste = st.sidebar.number_input("Maskinens gribekant / restspild (mm)", value=100, step=10, min_value=0)
+    kerf = st.sidebar.number_input("Savsnit / klinge tykkelse (mm)", value=0, step=1, min_value=0)
+    grip_waste = st.sidebar.number_input("Maskinens gribekant / restspild (mm)", value=200, step=10, min_value=0)
     
     st.sidebar.markdown("---")
     st.sidebar.info(f"Brugbar længde pr. stang:\n### **{bar_length - grip_waste} mm**")

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stang-skareplan-v1';
+const CACHE_NAME = 'stang-skareplan-v2';
 const urlsToCache = [
   './',
   './index.html',
